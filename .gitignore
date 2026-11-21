@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs de entrenamiento intermedios y TensorBoard (se conservan los modelos finales model_fase*.pt)
+checkpoints/*/logs/
+
+# Isaac Sim / entorno
+.vscode/
+*.log

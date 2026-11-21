@@ -1,0 +1,117 @@
+---
+
+**Asignatura:** Modelado y control de robots
+
+**Curso:** 2025/2026
+
+### Descripción del proyecto
+
+El proyecto de la asignatura consistirá en la simulación e implementación de un sistema de control para robots industriales, móviles o drones. La opción seleccionada para su desarrollo es:
+
+* **Título:** Seguimiento de objetivos móviles con TurtleBot3 mediante visión artificial y Reinforcement Learning
+
+
+* **Resumen:** Este proyecto propone entrenar al TurtleBot3 para seguir a un objetivo móvil (otra persona o robot) utilizando únicamente entradas visuales. En un entorno simulado se modelará el TurtleBot3 con cámara RGB y se configurarán escenarios donde el objetivo se desplace siguiendo trayectorias diversas. El agente, entrenado con `rsl_rl_ppo`, deberá aprender a identificar al objetivo en la escena y ajustar su movimiento para mantener una distancia adecuada sin colisionar. El desempeño será evaluado considerando precisión en el seguimiento, estabilidad y adaptabilidad frente a variaciones en la velocidad o el movimiento del objetivo.
+
+
+
+---
+
+### Objetivos generales
+
+1. Plantear, modelar y resolver un problema de control de un sistema robotizado con relevancia en entornos industriales.
+
+
+2. Explorar y aplicar técnicas avanzadas de control, con especial énfasis en el uso de Reinforcement Learning (RL) como alternativa a métodos tradicionales.
+
+
+3. Demostrar la capacidad de simulación, validación experimental (cuando sea posible) y análisis crítico de resultados.
+
+
+
+---
+
+### Objetivos del proyecto seleccionado
+
+#### Objetivos principales y específicos
+
+1. **Objetivo principal:** Desarrollar un agente de Reinforcement Learning que permita al TurtleBot3 seguir a un objetivo móvil basándose en información visual.
+2Aquí tienes el enunciado completo e integrado con los datos específicos de la propuesta que has seleccionado:
+
+
+
+---
+
+### **Enunciado del Proyecto: Modelado y Control de Robots**
+
+El proyecto de la asignatura consistirá en la simulación e implementación de un sistema de control para robots industriales, móviles o drones. En este caso, el proyecto seleccionado se centra en la robótica móvil mediante el **seguimiento de objetivos móviles con TurtleBot3 utilizando visión artificial y Reinforcement Learning**.
+
+---
+
+#### **1. Objetivos Generales**
+
+* Plantear, modelar y resolver un problema de control de un sistema robotizado con relevancia en entornos industriales.
+
+
+* Explorar y aplicar técnicas avanzadas de control, con especial énfasis en el uso de Reinforcement Learning (RL) como alternativa a métodos tradicionales.
+
+
+* Demostrar la capacidad de simulación, validación experimental (cuando sea posible) y análisis crítico de resultados.
+
+
+
+---
+
+#### **2. Lineamientos del Proyecto**
+
+* El problema deberá enmarcarse en un reto realista de ingeniería o industria.
+
+
+* Se recomienda, aunque no es obligatorio, el uso de técnicas de aprendizaje por refuerzo (RL) para el diseño del controlador. En caso de optar por métodos alternativos, se deberá justificar su elección.
+
+
+* El proyecto podrá desarrollarse en entornos de simulación (ej. IsaacSim, Unity, Unreal, MATLAB/Simulink, etc.), con la posibilidad de una implementación práctica si las condiciones lo permiten.
+
+
+
+---
+
+#### **3. Propuesta Específica Seleccionada**
+
+* **Título:** Seguimiento de objetivos móviles con TurtleBot3 mediante visión artificial y Reinforcement Learning.
+
+
+* **Resumen:** Este proyecto propone entrenar al TurtleBot3 para seguir a un objetivo móvil (otra persona o robot) utilizando únicamente entradas visuales. En un entorno simulado se modelará el TurtleBot3 con cámara RGB y se configurarán escenarios donde el objetivo se desplace siguiendo trayectorias diversas. El agente, entrenado con `rsl_rl_ppo`, deberá aprender a identificar al objetivo en la escena y ajustar su movimiento para mantener una distancia adecuada sin colisionar. El desempeño será evaluado considerando precisión en el seguimiento, estabilidad y adaptabilidad frente a variaciones en la velocidad o el movimiento del objetivo.
+
+
+
+**Objetivo principal:**
+
+* Desarrollar un agente de Reinforcement Learning que permita al TurtleBot3 seguir a un objetivo móvil basándose en información visual.
+
+
+
+**Objetivos específicos:**
+
+1. Modelar el TurtleBot3 con cámara RGB en un entorno simulado.
+
+
+2. Configurar escenarios en un entorno simulado con objetivos móviles de diferente comportamiento.
+
+
+3. Entrenar un agente con `rsl_rl_ppo` para realizar el seguimiento de forma estable y segura.
+
+
+4. Evaluar el rendimiento en términos de precisión, distancia mantenida y tasa de colisiones.
+
+
+5. Documentar el proceso y analizar aplicaciones en robótica de servicio.
+
+
+
+**Objetivos secundarios:**
+
+1. Validar el agente en un TurtleBot3 real con ROS2 y visión integrada.
+
+
+2. Explorar la integración de detección avanzada (CNNs) para mejorar el reconocimiento del objetivo.
