@@ -4,7 +4,7 @@ Este modulo gestiona la camara RGB montada en el chasis del TurtleBot3,
 la captura de frames y la extraccion de caracteristicas visuales del objetivo.
 """
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Tuple
 import numpy as np
 
 try:

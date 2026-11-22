@@ -13,7 +13,7 @@ METRICS = [
     ("mean_area", "Area aparente media del objetivo", "green"),
     ("detection_rate", "Tasa de deteccion visual", "purple"),
     ("mean_distance", "Distancia media real al objetivo (m)", "orange"),
-    ("collision_rate", "Tasa de colisiones con obstaculo", "red"),
+    ("collision_rate", "Tasa de colisiones con el objetivo", "red"),
     ("success_rate", "Tasa de seguimiento exitoso", "teal"),
 ]
 

@@ -4,9 +4,6 @@ The policy receives visual features rather than simulator state: target detectio
 normalized horizontal and vertical image errors, and apparent target area. The
 features are extracted from the batched RGB camera with the same red-segmentation
 thresholds as the standalone TurtleBot3Camera sensor.
-
-Fase 2 (recinto cerrado): se anaden 5 sectores de obstaculo (segmentacion azul de la
-misma camara RGB). El robot solo sigue a la bola; si no la ve, se queda quieto.
 """
 
 from __future__ import annotations
@@ -27,15 +24,12 @@ from isaaclab.sim import SimulationCfg
 from isaaclab.utils import configclass
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 try:
     from scripts.controlador_diferencial import TurtleBot3Kinematics
 except ImportError:
     from controlador_diferencial import TurtleBot3Kinematics
-try:
-    from rl.enclosure_map import EnclosureMap, MOVING_BOXES, build_assets
-except ImportError:
-    from enclosure_map import EnclosureMap, MOVING_BOXES, build_assets
 
 
 USD_PATH = str(PROJECT_ROOT / "assets/turtlebot3_usd/turtlebot3_burger/turtlebot3_burger.usda")
@@ -74,17 +68,6 @@ class TurtleBot3FollowSceneCfg(InteractiveSceneCfg):
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(1.5, 0.0, 0.2)),
     )
-    obstacle_1 = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/Obstacle1",
-        spawn=sim_utils.CylinderCfg(
-            radius=0.16,
-            height=0.6,
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.18, 0.20, 0.25)),
-            rigid_props=sim_utils.UsdPhysicsRigidBodyCfg(kinematic_enabled=True),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.8, 0.65, 0.3)),
-    )
-    obstacle = obstacle_1
     camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/Geometry/base_footprint/base_link/rgb_camera",
         spawn=sim_utils.PinholeCameraCfg(clipping_range=(0.05, 10.0)),
@@ -112,12 +95,8 @@ class TurtleBot3FollowEnvCfg(DirectRLEnvCfg):
     target_area_reference = 0.20
     target_area_scale = 0.06
     target_radius = 0.15
-    robot_radius = 0.12
-    obstacle_radius = 0.25
-    collision_distance = 0.37
     target_collision_distance = 0.30
     max_target_distance = 4.0
-    success_distance = 0.9
     success_center_error = 0.15
 
     target_speed_linear = 0.12
@@ -134,11 +113,8 @@ class TurtleBot3FollowEnvCfg(DirectRLEnvCfg):
     penalty_collision = 8.0
     reward_success = 2.0
 
-    # --- Fase 2 (mapa del recinto con obstaculos) ---
-    robot_clearance = 0.12
-    max_lost_seconds = 6.0
+    # --- Dinamica de actuacion ---
     action_smoothing = 1.0  # 1.0 = sin filtro; <1 suaviza las ordenes a las ruedas
-    penalty_angular = 0.0
     max_dv_step = 2.0  # cambio maximo de la accion lineal por paso (2.0 = sin limite)
     max_dw_step = 2.0  # idem para la accion angular
 
@@ -172,34 +148,6 @@ def configure_phase(env_cfg: TurtleBot3FollowEnvCfg, phase: str | float) -> Turt
         env_cfg.penalty_action_change = 0.20
         env_cfg.penalty_collision = 12.0
         env_cfg.scene.target.spawn.radius = 0.08
-        env_cfg.scene.obstacle_1 = None
-        env_cfg.scene.obstacle = None
-    elif phase_str == "2":
-        # Solo carga el mapa del recinto con los obstaculos (sin planteamiento RL adicional)
-        env_cfg.max_linear_velocity = 0.35
-        env_cfg.target_radius = 0.08
-        env_cfg.target_collision_distance = 0.23
-        env_cfg.target_area_reference = 0.06
-        env_cfg.target_area_scale = 0.025
-        env_cfg.target_speed_linear = 0.18
-        env_cfg.target_start_min_dist = 0.45
-        env_cfg.target_start_max_dist = 0.65
-        env_cfg.max_target_distance = 4.0
-        env_cfg.penalty_lost = 0.5
-        env_cfg.penalty_action_change = 0.20
-        env_cfg.penalty_collision = 12.0
-        env_cfg.episode_length_s = 30.0
-        scene = TurtleBot3FollowSceneCfg(
-            num_envs=env_cfg.scene.num_envs, env_spacing=5.5, replicate_physics=True, clone_in_fabric=False
-        )
-        scene.obstacle_1 = None
-        scene.obstacle = None
-        scene.target.spawn.radius = 0.08
-        scene.robot.init_state.pos = (-1.45, -0.58, 0.01)
-        scene.target.init_state.pos = (-0.85, -0.58, 0.14)
-        for name, asset_cfg in build_assets().items():
-            setattr(scene, name, asset_cfg)
-        env_cfg.scene = scene
     return env_cfg
 
 
@@ -210,7 +158,6 @@ class TurtleBot3FollowEnv(DirectRLEnv):
 
     def __init__(self, cfg: TurtleBot3FollowEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
-        self.enclosure = cfg.phase == "2"
         self.robot = self.scene["robot"]
         self.target = self.scene["target"]
         self.camera = self.scene["camera"]
@@ -227,7 +174,6 @@ class TurtleBot3FollowEnv(DirectRLEnv):
         self.trajectory_speed = torch.ones(self.num_envs, device=self.device)
         self.direction = torch.ones(self.num_envs, device=self.device)
         self.stop_offset = torch.zeros(self.num_envs, device=self.device)
-        self.speed_mode = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         self.target_xy = torch.zeros((self.num_envs, 2), device=self.device)
         self.target_heading = torch.zeros(self.num_envs, device=self.device)
         self.turn_w1 = torch.ones(self.num_envs, device=self.device)
@@ -242,26 +188,6 @@ class TurtleBot3FollowEnv(DirectRLEnv):
         self.observation_features = torch.zeros((self.num_envs, self.obs_dim), device=self.device)
         self.collision = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self.success = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
-        if self.enclosure:
-            self.map = EnclosureMap(self.device)
-            self.boxes = [self.scene[name] for name, *_ in MOVING_BOXES]
-            self.path_s0 = torch.zeros(self.num_envs, device=self.device)
-            self.box_phase = torch.zeros((self.num_envs, len(self.boxes)), device=self.device)
-            self.wobble_phase = torch.zeros(self.num_envs, device=self.device)
-            self.wobble_amp = torch.full((self.num_envs,), 0.12, device=self.device)
-            self.wobble_freq = torch.full((self.num_envs,), 0.7, device=self.device)
-            self.direction = torch.ones(self.num_envs, device=self.device)
-            self.stop_offset = torch.zeros(self.num_envs, device=self.device)
-            self.lost_steps = torch.zeros(self.num_envs, device=self.device)
-            self.clearance = torch.full((self.num_envs,), 10.0, device=self.device)
-            self.obstacle_1 = None
-            self.obstacle = None
-        elif "obstacle_1" in self.scene.keys():
-            self.obstacle_1 = self.scene["obstacle_1"]
-            self.obstacle = self.obstacle_1
-        else:
-            self.obstacle_1 = None
-            self.obstacle = None
 
     def _setup_scene(self):
         pass
@@ -339,155 +265,16 @@ class TurtleBot3FollowEnv(DirectRLEnv):
         target_pos = self.target.data.root_pos_w.torch
         robot_target_distance = torch.linalg.vector_norm(robot_pos[:, :2] - target_pos[:, :2], dim=1)
 
-        if self.enclosure:
-            local = robot_pos[:, :2] - self.scene.env_origins[:, :2]
-            self.clearance = self.map.clearance(local, self._moving_centers())
-            obstacle_collision = self.clearance < self.cfg.robot_clearance
-            self.lost_steps = torch.where(
-                self.observation_features[:, 0] > 0.5, torch.zeros_like(self.lost_steps), self.lost_steps + 1.0
-            )
-            lost_too_long = self.lost_steps * self.step_dt > self.cfg.max_lost_seconds
-        elif self.obstacle_1 is not None:
-            obs1_pos = self.obstacle_1.data.root_pos_w.torch
-            d1 = torch.linalg.vector_norm(robot_pos[:, :2] - obs1_pos[:, :2], dim=1)
-            obstacle_collision = (d1 < self.cfg.collision_distance) & (self.cfg.phase == "1")
-            lost_too_long = torch.zeros_like(obstacle_collision)
-        else:
-            obstacle_collision = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
-            lost_too_long = obstacle_collision
-
-        target_collision = robot_target_distance < self.cfg.target_collision_distance
-        self.collision = obstacle_collision | target_collision
-        terminated = self.collision | (robot_target_distance > self.cfg.max_target_distance) | lost_too_long
+        self.collision = robot_target_distance < self.cfg.target_collision_distance
+        terminated = self.collision | (robot_target_distance > self.cfg.max_target_distance)
         timeout = self.episode_length_buf >= self.max_episode_length
         return terminated, timeout
-
-    # ------------------------------------------------------------------
-    # Fase 2: recinto cerrado
-    # ------------------------------------------------------------------
-    def _moving_centers(self) -> torch.Tensor:
-        time = self.episode_length_buf.float() * self.step_dt
-        return self.map.moving_centers(time, self.box_phase)
-
-    def _write_moving_boxes(self, env_ids=None) -> None:
-        centers = self._moving_centers()
-        for k, box in enumerate(self.boxes):
-            pose = torch.zeros((self.num_envs, 7), device=self.device)
-            pose[:, 6] = 1.0
-            pose[:, 0:2] = centers[:, k] + self.scene.env_origins[:, :2]
-            pose[:, 2] = 0.15
-            if env_ids is None:
-                box.write_root_pose_to_sim_index(root_pose=pose, env_ids=None)
-            else:
-                box.write_root_pose_to_sim_index(root_pose=pose[env_ids], env_ids=env_ids)
-
-    def _enclosure_target_xy(self) -> torch.Tensor:
-        """Posicion de la bola sobre la ruta segun su comportamiento.
-
-        Tipos: 0 velocidad constante, 1 velocidad variable (frena/acelera),
-        2 stop-and-go con pausas reales, 3 zigzag lateral amplio.
-        El sentido de la vuelta (horario/antihorario) es aleatorio por episodio.
-        """
-        time = self.episode_length_buf.float() * self.step_dt
-        speed = self.trajectory_speed
-        v = self.cfg.target_speed_linear
-        kind = self.trajectory_type
-
-        # Tipo 1: velocidad modulada (derivada en [0.75, 1.25])
-        t_var = time - (0.25 / 1.2) * torch.sin(1.2 * time)
-        # Tipo 2: ciclos de 6 s con 4 s de marcha y 2 s de parada (a 1.25x para igualar la media)
-        cycle, moving = 6.0, 4.0
-
-        def eff(x: torch.Tensor) -> torch.Tensor:
-            return torch.floor(x / cycle) * moving + torch.clamp(torch.remainder(x, cycle), max=moving)
-
-        t_stop = 1.25 * (eff(time + self.stop_offset) - eff(self.stop_offset))
-        t_eff = torch.where(kind == 1, t_var, torch.where(kind == 2, t_stop, time))
-        s = self.path_s0 + self.direction * v * speed * t_eff
-        pos, _, normal = self.map.path_at(s)
-        wobble = self.wobble_amp * torch.sin(self.wobble_freq * time + self.wobble_phase)
-        pos = pos + normal * wobble.unsqueeze(1)
-        safe_ball_clearance = max(self.cfg.target_radius, self.cfg.robot_clearance + 0.06)
-        return self.map.resolve(pos, safe_ball_clearance, self._moving_centers())
-
-    def _reset_enclosure(self, env_ids) -> None:
-        count = len(env_ids)
-        origin = self.scene.env_origins[env_ids]
-        self.path_s0[env_ids] = torch.rand(count, device=self.device) * self.map.length
-        kind = torch.randint(0, 4, (count,), device=self.device)
-        self.trajectory_type[env_ids] = kind
-        self.trajectory_speed[env_ids] = torch.empty(count, device=self.device).uniform_(0.85, 1.15)
-        self.direction[env_ids] = torch.where(torch.rand(count, device=self.device) < 0.5, 1.0, -1.0)
-        self.stop_offset[env_ids] = torch.rand(count, device=self.device) * 6.0
-        # vaiven lateral: pequeno por defecto, amplio en el tipo 3 (zigzag)
-        amp = torch.empty(count, device=self.device).uniform_(0.03, 0.06)
-        amp = torch.where(kind == 3, torch.empty(count, device=self.device).uniform_(0.08, 0.12), amp)
-        self.wobble_amp[env_ids] = amp
-        self.wobble_freq[env_ids] = torch.empty(count, device=self.device).uniform_(0.5, 1.3)
-        self.wobble_phase[env_ids] = torch.zeros(count, device=self.device)
-        self.box_phase[env_ids] = torch.rand((count, len(self.boxes)), device=self.device) * 2.0 * math.pi
-        self.lost_steps[env_ids] = 0.0
-        self.clearance[env_ids] = 10.0
-
-        # Bola sobre la ruta; el robot detras, mirando hacia ella (siempre a la vista)
-        ball_xy, _, _ = self.map.path_at(self.path_s0[env_ids])
-        dist = torch.empty(count, device=self.device).uniform_(
-            self.cfg.target_start_min_dist, self.cfg.target_start_max_dist
-        )
-        robot_xy, _, _ = self.map.path_at(self.path_s0[env_ids] - self.direction[env_ids] * dist)
-
-        # Evitar que una caja movil o columna quede pegada al robot en t=0
-        mov0 = self.map.moving_centers(torch.zeros(count, device=self.device), self.box_phase[env_ids])
-        if self.map.clearance(robot_xy, mov0).min() < 0.26:
-            too_close = self.map.clearance(robot_xy, mov0) < 0.26
-            self.box_phase[env_ids] = torch.where(
-                too_close.unsqueeze(1), self.box_phase[env_ids] + math.pi, self.box_phase[env_ids]
-            )
-            mov0 = self.map.moving_centers(torch.zeros(count, device=self.device), self.box_phase[env_ids])
-        robot_xy = self.map.resolve(robot_xy, self.cfg.robot_clearance + 0.06, mov0)
-        ball_xy = self.map.resolve(ball_xy, self.cfg.target_radius + 0.02, mov0)
-        heading = torch.atan2(ball_xy[:, 1] - robot_xy[:, 1], ball_xy[:, 0] - robot_xy[:, 0])
-        yaw = heading + torch.empty(count, device=self.device).uniform_(-0.25, 0.25)
-
-        robot_pose = self.robot.data.default_root_pose.torch[env_ids].clone()
-        robot_pose[:, 0:2] = robot_xy + origin[:, :2]
-        robot_pose[:, 2] = 0.01
-        robot_pose[:, 3] = 0.0
-        robot_pose[:, 4] = 0.0
-        robot_pose[:, 5] = torch.sin(yaw / 2.0)
-        robot_pose[:, 6] = torch.cos(yaw / 2.0)
-        self.robot.write_root_pose_to_sim_index(root_pose=robot_pose, env_ids=env_ids)
-        self.robot.write_root_velocity_to_sim_index(
-            root_velocity=torch.zeros((count, 6), device=self.device), env_ids=env_ids
-        )
-        joint_pos = self.robot.data.default_joint_pos.torch[env_ids].clone()
-        joint_vel = torch.zeros_like(joint_pos)
-        self.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
-
-        target_pose = torch.zeros((count, 7), device=self.device)
-        target_pose[:, 6] = 1.0
-        target_pose[:, 0:2] = ball_xy + origin[:, :2]
-        target_pose[:, 2] = 0.14
-        self.target.write_root_pose_to_sim_index(root_pose=target_pose, env_ids=env_ids)
-        self.target.write_root_velocity_to_sim_index(
-            root_velocity=torch.zeros((count, 6), device=self.device), env_ids=env_ids
-        )
-        self._write_moving_boxes(env_ids)
-
-        self.actions[env_ids] = 0.0
-        self.previous_actions[env_ids] = 0.0
-        self.last_side[env_ids] = 0.0
-        self.collision[env_ids] = False
-        self.success[env_ids] = False
 
     # ------------------------------------------------------------------
     def _reset_idx(self, env_ids: Sequence[int] | None):
         if env_ids is None:
             env_ids = self.robot._ALL_INDICES
         super()._reset_idx(env_ids)
-        if self.enclosure:
-            self._reset_enclosure(env_ids)
-            return
         count = len(env_ids)
         origin = self.scene.env_origins[env_ids]
         self.target_start[env_ids] = torch.stack(
@@ -524,7 +311,6 @@ class TurtleBot3FollowEnv(DirectRLEnv):
             self.trajectory_type[env_ids] = scenario_map[self.cfg.scenario]
         else:
             self.trajectory_type[env_ids] = torch.randint(0, 5, (count,), device=self.device)
-        self.speed_mode[env_ids] = torch.randint(0, 3, (count,), device=self.device)
         self.trajectory_speed[env_ids] = torch.empty(count, device=self.device).uniform_(0.90, 1.10)
         self.direction[env_ids] = torch.where(torch.rand(count, device=self.device) < 0.5, 1.0, -1.0)
         self.stop_offset[env_ids] = (
@@ -555,23 +341,6 @@ class TurtleBot3FollowEnv(DirectRLEnv):
             root_velocity=torch.zeros((count, 6), device=self.device), env_ids=env_ids
         )
 
-        if self.obstacle_1 is not None:
-            obs1_pos = torch.stack(
-                (
-                    torch.full((count,), 0.8, device=self.device),
-                    torch.full((count,), 0.7, device=self.device),
-                    torch.full((count,), 0.30, device=self.device),
-                ),
-                dim=1,
-            )
-            pose1 = torch.zeros((count, 7), device=self.device)
-            pose1[:, 6] = 1.0
-            pose1[:, :3] = obs1_pos + origin
-            self.obstacle_1.write_root_pose_to_sim_index(root_pose=pose1, env_ids=env_ids)
-            self.obstacle_1.write_root_velocity_to_sim_index(
-                root_velocity=torch.zeros((count, 6), device=self.device), env_ids=env_ids
-            )
-
         self.actions[env_ids] = 0.0
         self.previous_actions[env_ids] = 0.0
         self.last_side[env_ids] = 0.0
@@ -579,20 +348,8 @@ class TurtleBot3FollowEnv(DirectRLEnv):
         self.success[env_ids] = False
 
     def _update_target(self) -> None:
-        if self.enclosure:
-            xy = self._enclosure_target_xy()
-            self.target_world[:, :2] = xy + self.scene.env_origins[:, :2]
-            self.target_world[:, 2] = 0.0
-            pose = torch.zeros((self.num_envs, 7), device=self.device)
-            pose[:, 6] = 1.0
-            pose[:, :3] = self.target_world
-            self.target.write_root_pose_to_sim_index(root_pose=pose, env_ids=None)
-            self._write_moving_boxes(None)
-            return
-
         time = self.episode_length_buf.float() * self.step_dt
         speed = self.trajectory_speed
-        sgn = self.direction
         x0 = self.target_start[:, 0]
         y0 = self.target_start[:, 1]
         v_lin = self.cfg.target_speed_linear
@@ -676,7 +433,7 @@ class TurtleBot3FollowEnv(DirectRLEnv):
         self.target.write_root_pose_to_sim_index(root_pose=pose, env_ids=None)
 
     def _extract_visual_features_from_rgb(self) -> torch.Tensor:
-        """Segmentacion roja (bola) y, en la Fase 2, azul (obstaculos) sobre el RGB por lotes."""
+        """Segmentacion roja (bola) sobre el RGB por lotes."""
         rgb = self.camera.data.output["rgb"].torch[..., :3].float()
         red = rgb[..., 0]
         green = rgb[..., 1]

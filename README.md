@@ -43,13 +43,11 @@ proyecto_ws/
 │   └── fase1_5/                      # Métricas CSV y gráfica de rendimiento (Fase 1.5)
 ├── rl/
 │   ├── turtlebot3_follow_env.py      # Entorno DirectRLEnv, recompensas, escenarios y visión RGB
-│   ├── enclosure_map.py              # Mapa del recinto cerrado (3.8 × 2.4 m), columnas y ruta Chaikin
 │   ├── ppo_cfg.py                    # Hiperparámetros del runner PPO (rsl_rl)
 │   ├── train_ppo.py                  # Entrenamiento headless con carga incremental por fases
 │   ├── play_ppo.py                   # Visualización en tiempo real en Isaac Sim GUI
 │   ├── evaluate.py                   # Evaluación cuantitativa y exportación a CSV
-│   ├── plot_results.py               # Generación de gráficas de rendimiento
-│   └── view_map.py                   # Visor del recinto de la Fase 2
+│   └── plot_results.py               # Generación de gráficas de rendimiento
 ├── scripts/
 │   ├── controlador_diferencial.py    # Cinemática directa/inversa (NumPy y PyTorch)
 │   └── sensor_camara.py              # Sensor de cámara RGB standalone y extracción de características
@@ -67,9 +65,10 @@ proyecto_ws/
 * **Función de recompensa:** Combina centrado horizontal, mantenimiento de área aparente de referencia (distancia objetivo), continuidad de detección, suavidad de acciones (`action_change`) y penalización por pérdida del objetivo o colisión.
 
 ### Fases Implementadas
-1. **Fase 1 — Seguimiento base (`--phase 1`):** Objetivo esférico (`r = 0.15 m`) en espacio abierto con un obstáculo estático. Checkpoint consolidado en `checkpoints/fase1/model_fase1.pt`.
+1. **Fase 1 — Seguimiento base (`--phase 1`):** Objetivo esférico (`r = 0.15 m`) en espacio abierto. Checkpoint consolidado en `checkpoints/fase1/model_fase1.pt`.
 2. **Fase 1.5 — Seguimiento cercano y trayectorias complejas (`--phase 1.5`):** Objetivo reducido (`r = 0.08 m`), mayor velocidad del robot (`0.35 m/s`), penalización anti-oscilación y **5 escenarios dinámicos** (`circular`, `slalom`, `stop_and_go`, `acelerones`, `erratico` y `mixto`). Entrenado sobre el checkpoint de la Fase 1 (`checkpoints/fase1_5/model_fase1_5.pt`).
-3. **Fase 2 — Recinto cerrado con obstáculos (`--phase 2`, en desarrollo):** Recinto de `3.8 × 2.4 m` con muros perimetrales, 11 columnas estáticas y ruta cerrada suavizada mediante Chaikin (`enclosure_map.py`). Actualmente implementa el mapa y la dinámica del recinto; la observación visual de obstáculos azules para evasión está en desarrollo.
+
+> Para copiar y pegar rápidamente los comandos de cada escenario, consulta [README_COMANDOS.md](README_COMANDOS.md).
 
 ---
 
@@ -109,12 +108,6 @@ Escenarios disponibles para `--scenario`:
 ```bash
 # Fase 1 (modelo base)
 /home/rbriram/IsaacLab/isaaclab.sh -p rl/play_ppo.py --phase 1
-
-# Solo el mapa del recinto cerrado (Fase 2, sin política)
-/home/rbriram/IsaacLab/isaaclab.sh -p rl/view_map.py
-
-# Política Fase 1.5 ejecutándose dentro del recinto de la Fase 2
-/home/rbriram/IsaacLab/isaaclab.sh -p rl/play_ppo.py --phase 2
 ```
 
 ### 2. Entrenamiento (Headless en GPU)

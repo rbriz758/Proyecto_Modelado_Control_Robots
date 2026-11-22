@@ -17,8 +17,8 @@ parser.add_argument(
     "--phase",
     type=str,
     default="1.5",
-    choices=["1", "1.5", "2"],
-    help="Fase del proyecto a ejecutar (1, 1.5 o 2)",
+    choices=["1", "1.5"],
+    help="Fase del proyecto a ejecutar (1 o 1.5)",
 )
 parser.add_argument(
     "--scenario",
@@ -72,8 +72,6 @@ def main() -> None:
         checkpoint = Path(args_cli.checkpoint).expanduser().resolve()
     else:
         checkpoint = (PROJECT_ROOT / f"checkpoints/fase{phase_key}/model_fase{phase_key}.pt").resolve()
-        if not checkpoint.is_file() and args_cli.phase == "2":
-            checkpoint = (PROJECT_ROOT / "checkpoints/fase1_5/model_fase1_5.pt").resolve()
 
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Checkpoint no encontrado para la Fase {args_cli.phase}: {checkpoint}")
@@ -83,12 +81,8 @@ def main() -> None:
     env_cfg.scenario = args_cli.scenario
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = 42
-    if args_cli.phase == "2":
-        cam_eye = (0.0, -2.7, 3.4)
-        cam_lookat = (0.0, 0.0, 0.0)
-    else:
-        cam_eye = (2.8, -2.8, 2.0)
-        cam_lookat = (0.8, 0.0, 0.2)
+    cam_eye = (2.8, -2.8, 2.0)
+    cam_lookat = (0.8, 0.0, 0.2)
 
     env_cfg.sim.default_visualizer_cfg = VisualizerCfg(
         eye=cam_eye,

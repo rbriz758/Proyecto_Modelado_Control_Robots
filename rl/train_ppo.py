@@ -17,8 +17,8 @@ parser.add_argument(
     "--phase",
     type=str,
     default="1.5",
-    choices=["1", "1.5", "2"],
-    help="Fase del proyecto a entrenar (1, 1.5 o 2)",
+    choices=["1", "1.5"],
+    help="Fase del proyecto a entrenar (1 o 1.5)",
 )
 parser.add_argument("--num-envs", type=int, default=64)
 parser.add_argument("--max-iterations", type=int, default=1000)
@@ -37,7 +37,6 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import shutil
-import torch
 from isaaclab_rl.rsl_rl import (
     RslRlVecEnvWrapper,
     check_rsl_rl_version,
@@ -92,8 +91,8 @@ def main() -> None:
             raise FileNotFoundError(f"Checkpoint no encontrado: {checkpoint_to_load}")
         runner.load(str(checkpoint_to_load))
         for net in (runner.alg.actor, runner.alg.critic):
-                if hasattr(net, "obs_normalizer") and hasattr(net.obs_normalizer, "count"):
-                    net.obs_normalizer.count.clamp_(max=2048)
+            if hasattr(net, "obs_normalizer") and hasattr(net.obs_normalizer, "count"):
+                net.obs_normalizer.count.clamp_(max=2048)
 
     print("[TRAIN] runner PPO listo", flush=True)
     runner.learn(

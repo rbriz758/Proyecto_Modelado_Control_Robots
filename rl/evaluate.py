@@ -11,8 +11,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_CHECKPOINT = "/home/rbriram/IsaacLab/logs/rsl_rl/turtlebot3_follow/model_999.pt"
-
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description="Evaluate TurtleBot3 PPO following policy")
@@ -20,8 +18,8 @@ parser.add_argument(
     "--phase",
     type=str,
     default="1.5",
-    choices=["1", "1.5", "2"],
-    help="Fase a evaluar (1, 1.5 o 2)",
+    choices=["1", "1.5"],
+    help="Fase a evaluar (1 o 1.5)",
 )
 parser.add_argument(
     "--scenario",
